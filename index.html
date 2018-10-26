@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<style>
+  .control-group {
+    padding-top: 0px;
+    margin: 10px;
+  }
+</style>
+</style>
+    <head>
+        <meta charset="utf-8">
+        <title>New York City Taxi Trips Visualization</title>
+        <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+        <script src="http://d3js.org/d3.v4.min.js" charset="utf-8"></script>
+        <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+        <style>
+            #map-container {
+                height: 450px;
+                width: 500px;
+                margin-left : 100px;
+            }
+            div {
+                display: inline-block;
+            }
+            #map-legend {
+                margin-top: 5px;
+                position: absolute;
+            }
+            #line-chart {
+              height: 450px;
+              width: 600px;
+              margin-bottom: 50px;
+              padding-top: 50px;
+            }
+            #map-legend2 {
+                margin-top: 5px;
+                position: absolute;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="map-legend"></div>
+        <div id="map-container"></div>
+        <div id="line-chart"></div>
+        <div id="map-legend2"></div>
+        <script>
+            var map;
+            var legend;
+            var legend2;
+            var colorScale  = d3.scaleOrdinal(d3.schemeCategory10);
+            var category = '6am'; //default value
+            var taxiData;
+            d3.csv('./data/new_york_taxi_trips.csv', function(error, data) {
+                taxiData = data;
+                renderMap(taxiData, this.category);
+                renderLineChart(taxiData);
+            });
+
+            function renderLineChart(taxiData) {
+              var timeParse = d3.timeParse("%Y-%m-%d %H:%M:%S");
+              //For Jan-March
+              var data = d3.nest()
+               .key(function(d) { return timeParse(d.datetime).getHours(); })
+               .rollup(function(e) { return e.length; })
+               .entries(taxiData.filter(function(d) {
+                 var month = timeParse(d.datetime).getMonth();
+                 return (month <= 3);
+               }));
+
+              data.forEach(function (d) {
+                d.key = +d.key;
+                d.value = d.value;
+              })
+
+              data.sort(function(a, b) {
+                return a.key - b.key;
+              })
+              //For April-June
+              var data2 = d3.nest()
+               .key(function(d) { return timeParse(d.datetime).getHours(); })
+               .rollup(function(e) { return e.length; })
+               .entries(taxiData.filter(function(d) {
+                 var month = timeParse(d.datetime).getMonth();
+                 return (month > 3 && month <= 6);
+               }));
+
+              data2.forEach(function (d) {
+                d.key = +d.key;
+                d.value = d.value;
+              })
+
+              data2.sort(function(a, b) {
+                return a.key - b.key;
+              })
+              //create line graph
+              var svgWidth = 600, svgHeight = 400;
+              var margin = { top: 30, right: 20, bottom: 30, left: 50 };
+              var width = svgWidth - margin.left - margin.right;
+              var height = svgHeight - margin.top - margin.bottom;
+              var svg = d3.select('#line-chart').append('svg')
+                .attr("width", svgWidth)
+                .attr("height", svgHeight);
+
+              var g = svg.append("g")
+               .attr("transform","translate(" + margin.left + "," + margin.top + ")");
+              g.append("text")
+                .attr("x", (width / 2))
+                .attr("y", 0)
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("text-decoration", "underline")
+                .text("Number of Trips Throughout a Day");
+              var xScale = d3.scaleLinear()
+                  .domain([0,
+                  d3.max(data, function(d) { return d.key; })])
+                  .range([0, width]);
+              var yScale = d3.scaleLinear()
+                .domain([0, d3.max(data, function(d) { return d.value; })])
+                .range([height, 0]);
+
+              var line = d3.line()
+                .x(function(d) { return xScale(d.key); })
+                .y(function(d) { return yScale(d.value); });
+
+              g.append("g")
+                 .attr("transform", "translate(0," + height + ")")
+                 .call(d3.axisBottom()
+                 .scale(xScale))
+                 .append("text")
+                 .attr("fill", "#000")
+                 .attr("y", 25)
+                 .attr("x", width/2)
+                 .attr("text-anchor", "middle")
+                 .text("Hour in Day");
+
+               g.append("g")
+                .call(d3.axisLeft()
+                .scale(yScale))
+                .append("text")
+                .attr("fill", "#000")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", "0.71em")
+                .attr("text-anchor", "end")
+                .text("Number of Trips");
+
+               g.append("path")
+                .datum(data)
+                .attr("fill", "none")
+                .attr("stroke", "green")
+                .attr("stroke-linejoin", "round")
+                .attr("stroke-linecap", "round")
+                .attr("stroke-width", 1.5)
+                .attr("d", line);
+
+              g.append("path")
+                .datum(data2)
+                .attr("fill", "none")
+                .attr("stroke", "red")
+                .attr("stroke-linejoin", "round")
+                .attr("stroke-linecap", "round")
+                .attr("stroke-width", 1.5)
+                .attr("d", line);
+
+              var legendWidth2  = 150,
+                  legendHeight2 = 150;
+                  legend2 = d3.select('#map-legend2').append('svg')
+                  .attr('width', legendWidth2)
+                  .attr('height', legendHeight2);
+              var legend_keys = ["Jan-March" , "April-June"]
+              var legends2 = legend2.selectAll(".legend2")
+                  .data(legend_keys)
+                  .enter().append("g")
+                  .attr("class", "legend2")
+                  .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+              //Create legend2
+              legends2.append("rect")
+                  .attr("x", legendWidth2 - 28)
+                  .attr("width", 18)
+                  .attr("height", 18)
+                  .style("fill", colorScale);
+
+              legends2.append("text")
+                  .attr("x", legendWidth2 - 34)
+                  .attr("y", 9)
+                  .attr("dy", ".35em")
+                  .style("text-anchor", "end")
+                  .text(function(d) { return d; })
+            }
+
+            function renderMap(taxiData, category) {
+
+                var tripProperty = [];
+                var timeParse = d3.timeParse("%Y-%m-%d %H:%M:%S");
+
+                taxiData.filter(function(d){
+                  var month = timeParse(d.datetime).getMonth();
+                  var day = timeParse(d.datetime).getDate();
+                  var hour = timeParse(d.datetime).getHours();
+                  var lower;
+                  var upper;
+
+                  if (category == '6am') {
+                    lower = 6;
+                     upper = 12;
+                  }
+                  else if (category == '12pm') {
+                    lower = 12;
+                    upper = 18;
+                  }
+                  else if (category == '6pm') {
+                    lower = 18;
+                    upper = 24;
+                  }
+                  else {
+                    lower = 0;
+                    upper = 6;
+                  }
+                  return ((hour >= lower) && (hour < upper) && (month == 1) && (day == 1))})
+                .forEach(function(trips, i) {
+                    var geoJSONFeature = {
+                        "type": "Feature",
+                        "properties": {
+                            "color":  colorScale(trips.cat),
+                            "radius": 2,
+                        },
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": [ +trips.longitude, +trips.latitude ]
+                        }
+                    };
+                    tripProperty.push(geoJSONFeature);
+                });
+                displayTrips(tripProperty);
+            }
+
+            var displayTrips = function(tripProperty) {
+                map = L.map("map-container"),
+                bwOsmURL  = "http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
+
+
+                var osmTiles = new L.TileLayer(bwOsmURL, {
+                    minZoom: 12,
+                    maxZoom: 16,
+                });
+
+                var centerView  = new L.LatLng(40.75, -73.97);
+                map.setView(centerView, 12);
+                map.addLayer(osmTiles);
+
+                L.geoJson(tripProperty, {
+                    style: function (feature) {
+                        return {
+                            color:       '#000',
+                            opacity:     0,
+                            radius:      feature.properties.radius,
+                            fillColor:   feature.properties.color,
+                            fillOpacity: 0.8
+                        };
+                    },
+                    pointToLayer: function (feature, latlng) {
+                        return L.circleMarker(latlng);
+                    }
+                }).addTo(map);
+                //create legend 1
+                var legendWidth  = 100,
+                    legendHeight = 150;
+                    legend = d3.select('#map-legend').append('svg')
+                    .attr('width', legendWidth)
+                    .attr('height', legendHeight);
+                var legend_keys = ["pickup" , "dropoff"]
+                var legends = legend.selectAll(".legend")
+                    .data(legend_keys)
+                    .enter().append("g")
+                    .attr("class", "legend")
+                    .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+                legends.append("rect")
+                    .attr("x", legendWidth - 28)
+                    .attr("width", 18)
+                    .attr("height", 18)
+                    .style("fill", colorScale);
+
+                legends.append("text")
+                    .attr("x", legendWidth - 34)
+                    .attr("y", 9)
+                    .attr("dy", ".35em")
+                    .style("text-anchor", "end")
+                    .text(function(d) { return d.toLowerCase(); })
+            };
+            //when user select a button
+            function select(category) {
+                this.category = category;
+                legend.remove();
+                map.remove();
+                renderMap(taxiData, category);
+            }
+        </script>
+
+        <div class="control-group">
+          <button onclick="select('6am')">
+              6AM-12PM
+          </button>
+          <button onclick="select('12pm')">
+              12PM-6PM
+          </button>
+          <button onclick="select('6pm')">
+              6PM-12AM
+          </button>
+          <button onclick="select('12am')">
+              12AM-6AM
+          </button>
+      </div>
+    </body>
+</html>
