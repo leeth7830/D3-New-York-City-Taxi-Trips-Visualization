@@ -17,3 +17,16 @@ Python
 * [D3] (https://d3js.org/) - Javascript library framework
 * [Leaflet] (https://leafletjs.com/) - Javascript library used to create a map
 * [Python] (https://www.python.org/) - The programming language used to run the server and transform data
+
+## Data
+
+2016 Jan to June taxi trips recorded in New York City
+
+Original/Input Data: train.csv
+Source: https://www.kaggle.com/c/nyc-taxi-trip-duration/data
+
+Modified using Python script provided in the data folder
+
+Output: new_york_taxi_trips.csv
+Columns: datetime, latitude ,longitude, cat
+
