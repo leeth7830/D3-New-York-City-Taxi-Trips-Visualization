@@ -28,5 +28,6 @@ Source: https://www.kaggle.com/c/nyc-taxi-trip-duration/data
 Modified using Python script provided in the data folder
 
 Output: new_york_taxi_trips.csv
+
 Columns: datetime, latitude ,longitude, cat
 
